@@ -38,7 +38,7 @@ class TaskController extends Controller
         $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
-            'due_date'    => 'nullable|date',
+            'due_date'    => 'nullable|date|after_or_equal:today',
             'assign_to_me' => 'boolean'
         ]);
 
