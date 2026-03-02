@@ -117,7 +117,6 @@
         color: white;
     }
 
-/* Enhanced Edit Details Button */
     .edit-trigger {
         background: #f1f5f9;
         border: 1px solid #cbd5e0;
@@ -128,7 +127,7 @@
         border-radius: 4px;
         font-weight: 600;
         transition: all 0.2s ease;
-        text-decoration: none; /* Removes the underline from before */
+        text-decoration: none;
     }
 
     .edit-trigger:hover {
@@ -137,7 +136,6 @@
         border-color: #94a3b8;
     }
 
-    /* Small adjustment to the header area to align the button better */
     .project-header-actions {
         display: flex; 
         align-items: center; 
@@ -152,6 +150,35 @@
         margin: 10px 0;
         border: 1px dashed #cbd5e0;
     }
+
+    .transfer-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85em;
+        color: #64748b;
+    }
+
+    .member-select {
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e0;
+        background-color: #fff;
+        color: #334155;
+        font-size: 0.9em;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .member-select:hover {
+        border-color: #94a3b8;
+    }
+
+    .member-select:focus {
+        border-color: #3182ce;
+        box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.1);
+    }
 </style>
 
 <div class="main-grid">
@@ -164,7 +191,6 @@
             <button class="btn btn-primary" onclick="toggleNewProject()">+ Initiate Project</button>
         </header>
 
-        {{-- New Project Form --}}
         <div id="newProjectForm" style="display:none; background: white; padding: 20px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <form method="POST" action="{{ route('projects.store') }}">
                 @csrf
@@ -177,10 +203,10 @@
         @forelse($projects as $project)
             <div class="project-card">
                 @php
-                    $activeCount = $project->tasks()
-                    ->where('user_id', auth()->id())
-                    ->whereIn('status', ['pending', 'in-progress'])
-                    ->count();
+                    $activeCount = $project->tasks
+                        ->where('user_id', auth()->id())
+                        ->whereIn('status', ['PENDING', 'IN-PROGRESS'])
+                        ->count();
                     
                     $isFull = $activeCount >= 3;
                     $isOwner = auth()->id() === $project->owner_id;
@@ -194,7 +220,6 @@
                             
                             @if($isOwner)
                                 <span style="font-size: 0.7em; color: #2b6cb0; font-weight: bold; background: #ebf4ff; padding: 2px 8px; border-radius: 4px; border: 1px solid #bee3f8;">⭐ OWNER</span>
-                                {{-- This button now uses the updated CSS --}}
                                 <button onclick="toggleEdit({{ $project->id }})" class="edit-trigger">
                                     Edit Details
                                 </button>
@@ -204,7 +229,6 @@
                     </div>
 
                         @if($isOwner)
-                            {{-- Hidden Edit Form --}}
                             <div id="project-edit-{{ $project->id }}" class="edit-form-container" style="display: none;">
                                 <form action="{{ route('projects.update', $project) }}" method="POST">
                                     @csrf @method('PATCH')
@@ -219,7 +243,6 @@
                             </div>
                         @endif
 
-                        {{-- Members List --}}
                         <div style="margin: 15px 0; display: flex; flex-wrap: wrap; align-items: center;">
                             <div class="member-pill owner-pill" title="Project Creator">
                                 👤 {{ $project->owner->name ?? 'Unknown Owner' }} (Owner)
@@ -238,10 +261,8 @@
                             @endforeach
                         </div>
 
-                        {{-- Management Section --}}
                         <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-top: 15px;">
                             @if($isOwner)
-                                {{-- Toggle Project Status --}}
                                 <form action="{{ route('projects.toggle-status', $project) }}" method="POST" style="display:inline;">
                                     @csrf @method('PATCH')
                                     <button type="submit" class="btn" style="background: {{ strtolower($project->status) === 'ongoing' ? '#48bb78' : '#a0aec0' }}; color: white; font-size: 0.75em; padding: 5px 12px; border-radius: 4px; border: none; cursor: pointer;">
@@ -249,7 +270,6 @@
                                     </button>
                                 </form>
 
-                                {{-- Add Member --}}
                                 <form method="POST" action="{{ route('projects.members.store', $project) }}" style="display:flex; gap:5px; width: 250px;">
                                     @csrf
                                     <input type="email" name="email" placeholder="Add by email..." required 
@@ -257,26 +277,28 @@
                                     <button type="submit" class="btn btn-add-member">Add</button>
                                 </form>
 
-                                {{-- Transfer Ownership --}}
                                 <form method="POST" action="{{ route('projects.transfer', $project) }}" style="display:flex; gap:5px; align-items: center;">
                                     @csrf @method('PATCH')
-                                    <label style="font-size: 0.75em; color: #718096;">Transfer:</label>
-                                    <select name="new_owner_id" onchange="if(confirm('Transfer ownership? You will become a regular member.')) this.form.submit()" 
-                                            style="font-size: 0.8em; padding: 4px; border-radius: 4px; border: 1px solid #cbd5e0;">
-                                        <option value="">Select Member...</option>
-                                        @foreach($project->users as $user)
-                                            <option value="{{ $user->id }}">{{ $user->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    <span class="transfer-group">
+                                        Transfer Project: 
+                                        <select name="new_owner_id" class="member-select" onchange="this.form.submit()">
+                                            <option value="">Select Member...</option>
+                                            @foreach($project->users as $member)
+                                                @if($member->id !== auth()->id())
+                                                    <option value="{{ $member->id }}">{{ $member->name }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                    </span>
                                 </form>
 
-                                {{-- Delete Project Button --}}
+                                
                                 <form action="{{ route('projects.destroy', $project) }}" method="POST" onsubmit="return confirm('⚠️ Delete project forever?')">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn-outline-danger">Delete Project</button>
                                 </form>
+                    
                             @else
-                                {{-- Exit Project Button for non-owners --}}
                                 <form method="POST" action="{{ route('projects.leave', $project) }}" onsubmit="return confirm('Are you sure you want to leave this project?')">
                                     @csrf 
                                     <button type="submit" class="btn-leave">Exit Project</button>
@@ -289,16 +311,19 @@
                     </span>
                 </div>
 
-                {{-- Capacity Tracker --}}
+                @php
+                    // Determine if the user has reached their global limit of 3 tasks
+                    $isFull = $globalActiveCount >= 3;
+                @endphp
+
                 <div class="capacity-tracker" style="margin-top:20px; border-left: 4px solid {{ $isFull ? '#fc8181' : '#4a90e2' }}">
-                    <span style="margin-right: 10px;">Your Active Slots:</span>
+                    <span style="margin-right: 10px;">Your Total Workload:</span>
                     @for($i = 1; $i <= 3; $i++)
-                        <span style="color: {{ $i <= $activeCount ? '#4a90e2' : '#cbd5e0' }}; font-size: 1.5em; line-height: 1;">●</span>
+                        <span style="color: {{ $i <= $globalActiveCount ? ($isFull ? '#fc8181' : '#4a90e2') : '#cbd5e0' }}; font-size: 1.5em; line-height: 1;">●</span>
                     @endfor
-                    <small style="margin-left: 10px; font-weight: bold;">({{ $activeCount }}/3)</small>
+                    <small style="margin-left: 10px; font-weight: bold;">({{ $globalActiveCount }}/3)</small>
                 </div>
 
-                {{-- Task List --}}
                 <div class="task-list">
                     @foreach($project->tasks as $task)
                         <div class="task-item">
@@ -338,7 +363,6 @@
         @endforelse
     </div>
 
-    {{-- Sidebar --}}
     <aside class="sidebar">
         <h3 style="margin-top: 0; color: #2d3748;">🎯 My Active Workload</h3>
         <p style="font-size: 0.8em; color: #718096; margin-bottom: 20px;">Tasks assigned to you across all projects.</p>

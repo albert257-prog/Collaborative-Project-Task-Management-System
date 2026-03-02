@@ -36,21 +36,28 @@ class ProjectController extends Controller
      */
     public function index()
     {
-        // 1. Retrieve all projects where the user is either the Owner or a Contributor
-        $projects = Project::where('owner_id', auth()->id())
-            ->orWhereHas('users', function($query) {
-                $query->where('users.id', auth()->id());
+        $user = auth()->user();
+
+        // 1. Calculate global workload (Across ALL projects) for the (0/3) counter
+        $globalActiveCount = Task::where('user_id', $user->id)
+            ->whereIn('status', ['PENDING', 'IN-PROGRESS'])
+            ->count();
+
+        // 2. Fetch only projects where the user is the owner OR a collaborator
+        $projects = Project::where('owner_id', $user->id)
+            ->orWhereHas('users', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
             })
-            ->with(['tasks.user', 'users', 'owner'])
+            ->with(['tasks', 'users', 'owner'])
             ->get();
 
-        // 2. Fetch current user's active (uncompleted) tasks for the Sidebar view
-        $myTasks = Task::where('user_id', auth()->id())
-            ->whereIn('status', ['PENDING', 'IN-PROGRESS']) 
+        // 3. Fetch tasks specifically assigned to the logged-in user for the sidebar
+        $myTasks = Task::where('user_id', $user->id)
+            ->whereIn('status', ['PENDING', 'IN-PROGRESS'])
             ->with('project')
             ->get();
 
-        return view('projects.index', compact('projects', 'myTasks'));
+        return view('projects.index', compact('projects', 'myTasks', 'globalActiveCount'));
     }
 
     /**
