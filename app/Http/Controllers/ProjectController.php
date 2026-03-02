@@ -87,8 +87,8 @@ class ProjectController extends Controller
         $request->validate(['email' => 'required|email|exists:users,email']);
 
         // Check Capacity: Limit of 3 contributors besides the owner
-        if ($project->users()->count() >= 3) {
-            return back()->with('error', 'Project limit reached (3 contributors max).');
+        if ($project->users()->count() >= 4) {
+            return back()->with('error', 'Project limit reached (4 contributors max).');
         }
 
         $userToAdd = User::where('email', $request->email)->first();
