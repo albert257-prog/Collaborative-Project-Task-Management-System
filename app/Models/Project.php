@@ -9,6 +9,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
 {
+    /**
+     * Check if the authenticated user has reached their task limit within this project.
+     * This removes the logic from the Blade file.
+     */
+    public function getIsUserFullAttribute()
+    {
+        return $this->tasks()
+            ->where('user_id', auth()->id())
+            ->whereIn('status', ['PENDING', 'IN-PROGRESS'])
+            ->count() >= 3;
+    }
+
     // Ensure 'status' is fillable to track ongoing vs completed
     protected $fillable = ['name', 'description', 'status', 'owner_id'];
 

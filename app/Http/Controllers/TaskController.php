@@ -66,21 +66,23 @@ class TaskController extends Controller
      */
     public function claim(Project $project, Task $task)
     {
-        // 1. Double check task is actually unassigned
-        if ($task->user_id !== null) {
-            return back()->with('error', 'This task has already been claimed.');
+        // 1. Authorization: Ensure the user is actually a member of this project
+        if (!$project->users->contains(auth()->id()) && $project->owner_id !== auth()->id()) {
+            abort(403, 'You are not a member of this project.');
         }
 
-        // 2. Capacity Check: Enforce the "Rule of 3"
-        if ($this->isUserFullInProject(auth()->user(), $project)) {
-            return back()->with('error', 'You have reached your maximum of 3 active tasks for this project.');
+        // 2. Business Rule: Check global capacity (Across all projects)
+        $activeTasksCount = auth()->user()->tasks()
+            ->whereIn('status', ['PENDING', 'IN-PROGRESS'])
+            ->count();
+
+        if ($activeTasksCount >= 3) {
+            // This prevents the "Postman/Inspect Element" bypass
+            return back()->with('error', 'Disqualified: You cannot have more than 3 active tasks.');
         }
 
-        // 3. Update task ownership and reset status to PENDING
-        $task->update([
-            'user_id' => auth()->id(),
-            'status'  => 'PENDING'
-        ]);
+        // 3. Process the claim
+        $task->update(['user_id' => auth()->id()]);
 
         return back()->with('success', 'Task claimed successfully!');
     }

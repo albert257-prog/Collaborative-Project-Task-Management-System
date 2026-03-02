@@ -203,12 +203,7 @@
         @forelse($projects as $project)
             <div class="project-card">
                 @php
-                    $activeCount = $project->tasks
-                        ->where('user_id', auth()->id())
-                        ->whereIn('status', ['PENDING', 'IN-PROGRESS'])
-                        ->count();
-                    
-                    $isFull = $activeCount >= 3;
+                    // Optimization: Use model attribute for ownership
                     $isOwner = auth()->id() === $project->owner_id;
                 @endphp
 
@@ -292,7 +287,6 @@
                                     </span>
                                 </form>
 
-                                
                                 <form action="{{ route('projects.destroy', $project) }}" method="POST" onsubmit="return confirm('⚠️ Delete project forever?')">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn-outline-danger">Delete Project</button>
@@ -312,15 +306,16 @@
                 </div>
 
                 @php
-                    $isFull = $globalActiveCount >= 3;
+                    // Server-side reference for the UI tracker
+                    $isFull = auth()->user()->tasks()->whereIn('status', ['PENDING', 'IN-PROGRESS'])->count() >= 3;
                 @endphp
 
                 <div class="capacity-tracker" style="margin-top:20px; border-left: 4px solid {{ $isFull ? '#fc8181' : '#4a90e2' }}">
                     <span style="margin-right: 10px;">Your Total Workload:</span>
                     @for($i = 1; $i <= 3; $i++)
-                        <span style="color: {{ $i <= $globalActiveCount ? ($isFull ? '#fc8181' : '#4a90e2') : '#cbd5e0' }}; font-size: 1.5em; line-height: 1;">●</span>
+                        <span style="color: {{ $i <= auth()->user()->tasks()->whereIn('status', ['PENDING', 'IN-PROGRESS'])->count() ? ($isFull ? '#fc8181' : '#4a90e2') : '#cbd5e0' }}; font-size: 1.5em; line-height: 1;">●</span>
                     @endfor
-                    <small style="margin-left: 10px; font-weight: bold;">({{ $globalActiveCount }}/3)</small>
+                    <small style="margin-left: 10px; font-weight: bold;">({{ auth()->user()->tasks()->whereIn('status', ['PENDING', 'IN-PROGRESS'])->count() }}/3)</small>
                 </div>
 
                 <div class="task-list">
@@ -341,7 +336,8 @@
                                     @if(!$task->user_id)
                                         <form action="{{ route('tasks.claim', [$project, $task]) }}" method="POST">
                                             @csrf
-                                            <button type="submit" class="btn btn-claim" {{ $isFull ? 'disabled' : '' }}>Claim</button>
+                                            {{-- Uses the Model attribute we created to avoid view logic --}}
+                                            <button type="submit" class="btn btn-claim" {{ $project->is_user_full ? 'disabled' : '' }}>Claim</button>
                                         </form>
                                     @endif
                                     @can('delete', $task)
