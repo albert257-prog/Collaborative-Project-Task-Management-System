@@ -312,7 +312,6 @@
                 </div>
 
                 @php
-                    // Determine if the user has reached their global limit of 3 tasks
                     $isFull = $globalActiveCount >= 3;
                 @endphp
 
@@ -326,35 +325,47 @@
 
                 <div class="task-list">
                     @foreach($project->tasks as $task)
-                        <div class="task-item">
-                            <div>
-                                <strong>{{ $task->title }}</strong>
-                                <span class="status-badge badge-{{ strtolower($task->status) }}" style="margin-left: 10px; font-size: 0.6em;">{{ $task->status }}</span>
-                                @if($task->user)
-                                    <small style="color: #a0aec0; margin-left: 8px;">— {{ $task->user->name }}</small>
-                                @endif
+                        <div class="task-item" style="flex-direction: column; align-items: flex-start;">
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                <div>
+                                    <strong>{{ $task->title }}</strong>
+                                    <span class="status-badge badge-{{ strtolower($task->status) }}" style="margin-left: 10px; font-size: 0.6em;">{{ $task->status }}</span>
+                                    @if($task->user)
+                                        <small style="color: #a0aec0; margin-left: 8px;">— {{ $task->user->name }}</small>
+                                    @endif
+                                    @if($task->due_date)
+                                        <small style="color: #e53e3e; margin-left: 8px; font-weight: bold;">📅 Due: {{ \Carbon\Carbon::parse($task->due_date)->format('M d') }}</small>
+                                    @endif
+                                </div>
+                                <div style="display: flex; gap: 5px;">
+                                    @if(!$task->user_id)
+                                        <form action="{{ route('tasks.claim', [$project, $task]) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="btn btn-claim" {{ $isFull ? 'disabled' : '' }}>Claim</button>
+                                        </form>
+                                    @endif
+                                    @can('delete', $task)
+                                        <form action="{{ route('tasks.destroy', $task) }}" method="POST">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                        </form>
+                                    @endcan
+                                </div>
                             </div>
-                            <div style="display: flex; gap: 5px;">
-                                @if(!$task->user_id)
-                                    <form action="{{ route('tasks.claim', [$project, $task]) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="btn btn-claim" {{ $isFull ? 'disabled' : '' }}>Claim</button>
-                                    </form>
-                                @endif
-                                @can('delete', $task)
-                                    <form action="{{ route('tasks.destroy', $task) }}" method="POST">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                    </form>
-                                @endcan
-                            </div>
+                            @if($task->description)
+                                <p style="color: #718096; font-size: 0.85em; margin: 5px 0 0 0;">{{ $task->description }}</p>
+                            @endif
                         </div>
                     @endforeach
 
-                    <form method="POST" action="/projects/{{ $project->id }}/tasks" style="margin-top:15px; display:flex; gap:10px;">
+                    <form method="POST" action="/projects/{{ $project->id }}/tasks" style="margin-top:15px; display:flex; flex-direction:column; gap:10px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #eee;">
                         @csrf
-                        <input type="text" name="title" placeholder="Assign a new task..." required style="flex-grow:1; padding:8px; border-radius:6px; border:1px solid #ddd;">
-                        <button type="submit" class="btn btn-primary" style="padding:8px 12px;">Add</button>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" name="title" placeholder="Task title..." required style="flex-grow:1; padding:8px; border-radius:6px; border:1px solid #ddd;">
+                            <input type="date" name="due_date" title="Due Date" min="{{ date('Y-m-d') }}" style="padding:8px; border-radius:6px; border:1px solid #ddd; color: #4a5568;">
+                        </div>
+                        <textarea name="description" placeholder="Task description..." style="width:100%; padding:8px; border-radius:6px; border:1px solid #ddd; height: 50px; font-size: 0.9em;"></textarea>
+                        <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Add Task</button>
                     </form>
                 </div>
             </div>
@@ -371,6 +382,9 @@
             <div class="my-task-card">
                 <small style="color:#4a90e2; font-weight:bold; display:block;">{{ $myTask->project->name }}</small>
                 <p style="margin: 5px 0; font-weight: 600;">{{ $myTask->title }}</p>
+                @if($myTask->due_date)
+                    <small style="color: #e53e3e; display: block; margin-bottom: 5px;">📅 {{ \Carbon\Carbon::parse($myTask->due_date)->format('M d, Y') }}</small>
+                @endif
                 <div style="margin-top: 10px;">
                     <form method="POST" action="{{ route('tasks.update-status', $myTask) }}">
                         @csrf @method('PATCH')
