@@ -175,13 +175,49 @@ class ProjectController extends Controller
     /**
      * Toggle project status between 'ongoing' and 'completed'.
      */
+    /**
+     * Requirement: Owner has full control to edit project details.
+     */
+    public function update(Request $request, Project $project)
+    {
+        $this->authorize('manage', $project);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string'
+        ]);
+
+        $project->update($request->only('name', 'description'));
+
+        return back()->with('success', 'Project details updated successfully.');
+    }
+
+    /**
+     * Requirement: Owner has full control to delete the project.
+     */
+    public function destroy(Project $project)
+    {
+        $this->authorize('manage', $project);
+
+        // Optional: Perform cleanup or cascade soft deletes if necessary
+        $project->delete();
+
+        return redirect()->route('dashboard')->with('success', 'Project deleted successfully.');
+    }
+
+    /**
+     * Toggle project status between 'Active' and 'Completed'.
+     * Only the owner has full control over this lifecycle.
+     */
     public function toggleStatus(Project $project)
     {
         $this->authorize('manage', $project);
-        
-        $newStatus = ($project->status === 'ongoing') ? 'completed' : 'ongoing';
+
+        // Change 'Active' to 'ongoing' to match your database constraints
+        $newStatus = (strtolower($project->status) === 'ongoing') ? 'completed' : 'ongoing';
+
         $project->update(['status' => $newStatus]);
 
-        return back()->with('success', "Project is now marked as {$newStatus}!");
+        return back()->with('success', 'Project status updated!');
     }
 }

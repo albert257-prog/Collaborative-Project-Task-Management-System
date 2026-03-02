@@ -83,7 +83,6 @@
     .btn-leave { background: #edf2f7; color: #4a5568; padding: 5px 12px; font-size: 0.75em; border: 1px solid #cbd5e0; border-radius: 4px; }
     .btn-leave:hover { background: #fee2e2; color: #991b1b; border-color: #f87171; }
 
-    /* Status-specific colors for the dropdown */
     .status-select {
         width: 100%;
         padding: 6px 10px;
@@ -94,7 +93,7 @@
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
-        appearance: none; /* Removes default browser arrow */
+        appearance: none;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 10px center;
@@ -103,10 +102,56 @@
 
     .status-select:hover { border-color: #4a90e2; background-color: #fff; }
 
-    /* Optional: change dropdown color based on selected value */
-    .status-select[data-status="PENDING"] { color: #856404; border-left: 4px solid #f6e05e; }
-    .status-select[data-status="IN-PROGRESS"] { color: #084298; border-left: 4px solid #4a90e2; }
-    .status-select[data-status="COMPLETED"] { color: #0f5132; border-left: 4px solid #48bb78; }
+    .btn-outline-danger {
+        background: transparent;
+        color: #fc8181;
+        border: 1px solid #fc8181;
+        padding: 5px 12px;
+        font-size: 0.75em;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .btn-outline-danger:hover {
+        background: #fc8181;
+        color: white;
+    }
+
+/* Enhanced Edit Details Button */
+    .edit-trigger {
+        background: #f1f5f9;
+        border: 1px solid #cbd5e0;
+        color: #475569;
+        cursor: pointer;
+        font-size: 0.75em;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        text-decoration: none; /* Removes the underline from before */
+    }
+
+    .edit-trigger:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+        border-color: #94a3b8;
+    }
+
+    /* Small adjustment to the header area to align the button better */
+    .project-header-actions {
+        display: flex; 
+        align-items: center; 
+        gap: 10px; 
+        margin-bottom: 8px;
+    }
+
+    .edit-form-container {
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 10px 0;
+        border: 1px dashed #cbd5e0;
+    }
 </style>
 
 <div class="main-grid">
@@ -138,21 +183,42 @@
                     ->count();
                     
                     $isFull = $activeCount >= 3;
-                    
-                    // Using owner_id to determine ownership
                     $isOwner = auth()->id() === $project->owner_id;
                 @endphp
 
                 <div class="flex-between">
                     <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <div id="project-display-{{ $project->id }}">
+                        <div class="project-header-actions">
                             <h2 style="margin:0;">{{ $project->name }}</h2>
+                            
                             @if($isOwner)
                                 <span style="font-size: 0.7em; color: #2b6cb0; font-weight: bold; background: #ebf4ff; padding: 2px 8px; border-radius: 4px; border: 1px solid #bee3f8;">⭐ OWNER</span>
+                                {{-- This button now uses the updated CSS --}}
+                                <button onclick="toggleEdit({{ $project->id }})" class="edit-trigger">
+                                    Edit Details
+                                </button>
                             @endif
                         </div>
-                        <p style="color: #666; font-size: 0.9em;">{{ $project->description }}</p>
-                        
+                        <p style="color: #666; font-size: 0.9em; margin-top: 5px;">{{ $project->description }}</p>
+                    </div>
+
+                        @if($isOwner)
+                            {{-- Hidden Edit Form --}}
+                            <div id="project-edit-{{ $project->id }}" class="edit-form-container" style="display: none;">
+                                <form action="{{ route('projects.update', $project) }}" method="POST">
+                                    @csrf @method('PATCH')
+                                    <input type="text" name="name" value="{{ $project->name }}" required 
+                                        style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #cbd5e0; border-radius: 4px;">
+                                    <textarea name="description" style="width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px; height: 60px;">{{ $project->description }}</textarea>
+                                    <div style="margin-top: 10px; display: flex; gap: 10px;">
+                                        <button type="submit" class="btn btn-primary" style="font-size: 0.75em;">Save Changes</button>
+                                        <button type="button" onclick="toggleEdit({{ $project->id }})" class="btn-leave">Cancel</button>
+                                    </div>
+                                </form>
+                            </div>
+                        @endif
+
                         {{-- Members List --}}
                         <div style="margin: 15px 0; display: flex; flex-wrap: wrap; align-items: center;">
                             <div class="member-pill owner-pill" title="Project Creator">
@@ -175,6 +241,14 @@
                         {{-- Management Section --}}
                         <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-top: 15px;">
                             @if($isOwner)
+                                {{-- Toggle Project Status --}}
+                                <form action="{{ route('projects.toggle-status', $project) }}" method="POST" style="display:inline;">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="btn" style="background: {{ strtolower($project->status) === 'ongoing' ? '#48bb78' : '#a0aec0' }}; color: white; font-size: 0.75em; padding: 5px 12px; border-radius: 4px; border: none; cursor: pointer;">
+                                        Mark as {{ strtolower($project->status) === 'ongoing' ? 'Completed' : 'Ongoing' }}
+                                    </button>
+                                </form>
+
                                 {{-- Add Member --}}
                                 <form method="POST" action="{{ route('projects.members.store', $project) }}" style="display:flex; gap:5px; width: 250px;">
                                     @csrf
@@ -185,8 +259,7 @@
 
                                 {{-- Transfer Ownership --}}
                                 <form method="POST" action="{{ route('projects.transfer', $project) }}" style="display:flex; gap:5px; align-items: center;">
-                                    @csrf
-                                    @method('PATCH')
+                                    @csrf @method('PATCH')
                                     <label style="font-size: 0.75em; color: #718096;">Transfer:</label>
                                     <select name="new_owner_id" onchange="if(confirm('Transfer ownership? You will become a regular member.')) this.form.submit()" 
                                             style="font-size: 0.8em; padding: 4px; border-radius: 4px; border: 1px solid #cbd5e0;">
@@ -196,8 +269,14 @@
                                         @endforeach
                                     </select>
                                 </form>
+
+                                {{-- Delete Project Button --}}
+                                <form action="{{ route('projects.destroy', $project) }}" method="POST" onsubmit="return confirm('⚠️ Delete project forever?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn-outline-danger">Delete Project</button>
+                                </form>
                             @else
-                                
+                                {{-- Exit Project Button for non-owners --}}
                                 <form method="POST" action="{{ route('projects.leave', $project) }}" onsubmit="return confirm('Are you sure you want to leave this project?')">
                                     @csrf 
                                     <button type="submit" class="btn-leave">Exit Project</button>
@@ -205,7 +284,7 @@
                             @endif
                         </div>
                     </div>
-                    <span class="status-badge badge-{{ $project->status === 'ongoing' ? 'in-progress' : 'completed' }}">
+                    <span class="status-badge badge-{{ strtolower($project->status) === 'ongoing' ? 'in-progress' : 'completed' }}">
                         {{ $project->status }}
                     </span>
                 </div>
@@ -225,7 +304,7 @@
                         <div class="task-item">
                             <div>
                                 <strong>{{ $task->title }}</strong>
-                                <span class="status-badge badge-{{ $task->status }}" style="margin-left: 10px; font-size: 0.6em;">{{ $task->status }}</span>
+                                <span class="status-badge badge-{{ strtolower($task->status) }}" style="margin-left: 10px; font-size: 0.6em;">{{ $task->status }}</span>
                                 @if($task->user)
                                     <small style="color: #a0aec0; margin-left: 8px;">— {{ $task->user->name }}</small>
                                 @endif
@@ -271,7 +350,7 @@
                 <div style="margin-top: 10px;">
                     <form method="POST" action="{{ route('tasks.update-status', $myTask) }}">
                         @csrf @method('PATCH')
-                        <select name="status" onchange="this.form.submit()">
+                        <select name="status" onchange="this.form.submit()" class="status-select">
                             <option value="PENDING" {{ $myTask->status === 'PENDING' ? 'selected' : '' }}>⏳ Pending</option>
                             <option value="IN-PROGRESS" {{ $myTask->status === 'IN-PROGRESS' ? 'selected' : '' }}>🚀 In-Progress</option>
                             <option value="COMPLETED" {{ $myTask->status === 'COMPLETED' ? 'selected' : '' }}>✅ Done</option>
@@ -292,6 +371,19 @@
     function toggleNewProject() {
         const form = document.getElementById('newProjectForm');
         form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    function toggleEdit(projectId) {
+        const display = document.getElementById(`project-display-${projectId}`);
+        const editForm = document.getElementById(`project-edit-${projectId}`);
+        
+        if (editForm.style.display === 'none') {
+            editForm.style.display = 'block';
+            display.style.display = 'none';
+        } else {
+            editForm.style.display = 'none';
+            display.style.display = 'block';
+        }
     }
 </script>
 @endsection
