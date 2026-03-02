@@ -31,8 +31,6 @@ A high-fidelity task management application built with Laravel, focusing on proj
 
 ---
 
----
-
 ## ⚙️ Technical Implementation Details
 
 ### 1. Advanced Task Validation (The "Rule of 3")
