@@ -31,27 +31,23 @@ A high-fidelity task management application built with Laravel, focusing on proj
 
 ---
 
-⚙️ Technical Implementation Details
-1. Advanced Task Validation (The "Rule of 3")
-Constraint: Users are restricted to 3 active tasks per project to ensure focused delivery.
+## ⚙️ Technical Implementation Details
 
-Logic: The TaskController performs a count of tasks with PENDING or IN-PROGRESS status before allowing a new task to be claimed or assigned.
+### 1. Advanced Task Validation (The "Rule of 3")
+* **Constraint**: Users are strictly restricted to **3 active tasks** per project to ensure focused delivery and prevent burnout.
+* **Logic**: The `TaskController` performs a real-time count of tasks with `PENDING` or `IN-PROGRESS` status before allowing a new task to be claimed or assigned.
+* **Dry Architecture**: A private `isUserFullInProject` helper method encapsulates this logic, ensuring consistency across the `store` and `claim` actions.
 
-Helper Method: A private isUserFullInProject method encapsulates this logic, making the code DRY (Don't Repeat Yourself) and easy to maintain.
+### 2. Data Integrity & Membership
+* **Task Re-pooling**: To prevent data loss, when a member leaves or is removed, their active tasks are not deleted. Instead, the `user_id` is set to `null`, returning the tasks to the project pool for other contributors.
+* **Ownership Security**: The `transferOwnership` method ensures a project always maintains exactly one owner. Upon transfer, the previous owner is automatically transitioned to a 'Contributor' role to maintain project continuity.
 
-2. Data Integrity & Membership
-Task Re-pooling: When a member leaves or is removed, their active tasks are not deleted. Instead, the user_id is set to null, returning the task to the project pool for others to claim.
+### 3. Security & Performance Optimization
+* **Authentication Security**: Implements Laravel's built-in authentication with added session regeneration to mitigate session fixation risks.
+* **Robust Validation**: Utilizes strict RFC/DNS email validation and the `uncompromised()` password rule to protect against known data breaches.
+* **Performance**: Optimized dashboard loading by using **Eager Loading** (`with(['tasks', 'users'])`) in the `ProjectController`, effectively eliminating the N+1 query problem.
 
-Ownership Security: A transferOwnership method ensures that a project always has exactly one owner. When ownership is transferred, the old owner is automatically demoted to a contributor to maintain access.
-
-3. Security & Performance
-Authentication: Uses Laravel's built-in authentication with added session regeneration to prevent session fixation attacks.
-
-Validation: Implements strict RFC and DNS email validation to ensure only reachable email addresses can register.
-
-Password Security: Utilizes the uncompromised() validation rule which checks if a user's password has appeared in known data breaches.
-
-Eager Loading: Uses .with(['tasks', 'users']) in the ProjectController to prevent the "N+1" query problem, significantly improving dashboard performance.
+---
 
 ## 🚀 Installation Guide
 
